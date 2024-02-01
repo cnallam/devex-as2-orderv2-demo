@@ -5,7 +5,7 @@
     "image": "mcr.microsoft.com/devcontainers/php:1-8.2-bullseye",
     "postCreateCommand": "",
     "postAttachCommand": {
-      "Start server": ""
+      "Start server": "php -S localhost:8888"
     },
     "forwardPorts": [
       8888
