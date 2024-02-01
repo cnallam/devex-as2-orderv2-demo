@@ -6,6 +6,14 @@ paypal.Buttons({
             headers: {
                 'Content-Type': 'application/json',
             },
+            body: JSON.stringify({
+                cart: [{
+                    id: "YOUR_PRODUCT_ID",
+                    quantity: "YOUR_PRODUCT_QUANTITY",
+                  },
+                ],
+            }),
+            
             // Add necessary request body if required by your backend
         }).then(function(res) {
             return res.json();
