@@ -1,95 +1,89 @@
 <?php
-// Assuming $app is an instance of a Slim-like PHP microframework
+// Assuming $app is a Slim application or similar that provides a routing mechanism
+require 'vendor/autoload.php';
 
-// Function to generate OAuth 2.0 access token
-function getAccessToken($clientId, $clientSecret) {
-    $url = "https://api.paypal.com/v1/oauth2/token";
-    $headers = array(
-        "Accept: application/json",
-        "Accept-Language: en_US",
-    );
+$app = new \Slim\App();
 
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_USERPWD, $clientId . ":" . $clientSecret);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=client_credentials");
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+// Function to generate OAuth 2.0 Access Token
+function getAccessToken() {
+    $clientId = getenv('PAYPAL_CLIENT_ID');
+    $secret = getenv('PAYPAL_CLIENT_SECRET');
+    $url = getenv('BASE_URL') . "/v1/oauth2/token";
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_HEADER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_USERPWD, $clientId . ":" . $secret);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, "grant_type=client_credentials");
 
     $response = curl_exec($ch);
-    if (curl_errno($ch)) {
-        // Handle error - perhaps log it and display an error message to the user
-        die('Curl error: ' . curl_error($ch));
-    }
-    curl_close($ch);
 
-    $decodedResponse = json_decode($response);
-    return $decodedResponse->access_token;
+    if (empty($response)) {
+        die("Error: No response.");
+    } else {
+        $json = json_decode($response);
+        curl_close($ch);
+        return $json->access_token;
+    }
 }
 
-// Create order web service
-$app->post("/api/orders", function () use ($app) {
-    $accessToken = getAccessToken('CLIENT_ID', 'CLIENT_SECRET'); // Replace with your actual client ID and secret
-    $url = "https://api.paypal.com/v2/checkout/orders";
-    $headers = array(
-        "Content-Type: application/json",
-        "Authorization: Bearer $accessToken",
-    );
+// POST /api/orders - Create an order
+$app->post('/api/orders', function () use ($app) {
+    $accessToken = getAccessToken();
+    $url = getenv('BASE_URL') . "/v2/checkout/orders";
 
     $orderData = array(
-        "intent" => "CAPTURE",
-        "purchase_units" => array(
+        // Define your order structure here as per PayPal's documentation.
+        // Example structure:
+        'intent' => 'CAPTURE',
+        'purchase_units' => array(
             array(
-                "amount" => array(
-                    "currency_code" => "USD",
-                    "value" => "100.00"
+                'amount' => array(
+                    'currency_code' => 'USD',
+                    'value' => '100.00'
                 )
             )
         )
     );
 
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+        "Content-Type: application/json",
+        "Authorization: Bearer " . $accessToken
+    ));
+    curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($orderData));
-    curl_setopt($ch, CURLOPT_POST, true);
 
     $response = curl_exec($ch);
-    if (curl_errno($ch)) {
-        // Handle error - perhaps log it and display an error message to the user
-        die('Curl error: ' . curl_error($ch));
-    }
     curl_close($ch);
 
-    $app->response->headers->set('Content-Type', 'application/json');
-    $app->response->setStatus(200);
-    $app->response->setBody($response);
+    echo $response;
 });
 
-// Capture payment web service
-$app->post("/api/orders/:orderID/capture", function ($orderID) use ($app) {
-    $accessToken = getAccessToken('CLIENT_ID', 'CLIENT_SECRET'); // Replace with your actual client ID and secret
-    $url = "https://api.paypal.com/v2/checkout/orders/$orderID/capture";
-    $headers = array(
-        "Content-Type: application/json",
-        "Authorization: Bearer $accessToken",
-    );
+// POST /api/orders/{orderID}/capture - Capture payment for an order
+$app->post('/api/orders/{orderID}/capture', function ($request, $response, $args) {
+    $accessToken = getAccessToken();
+    $orderID = $args['orderID'];
+    $url = getenv('BASE_URL') . "/v2/checkout/orders/$orderID/capture";
 
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+        "Content-Type: application/json",
+        "Authorization: Bearer " . $accessToken
+    ));
     curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
     $response = curl_exec($ch);
-    if (curl_errno($ch)) {
-        // Handle error - perhaps log it and display an error message to the user
-        die('Curl error: ' . curl_error($ch));
-    }
     curl_close($ch);
 
-    $app->response->headers->set('Content-Type', 'application/json');
-    $app->response->setStatus(200);
-    $app->response->setBody($response);
+    echo $response;
 });
 
 $app->run();
