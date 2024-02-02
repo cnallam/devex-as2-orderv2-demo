@@ -1,8 +1,13 @@
 <?php
+error_reporting(E_ALL ^ E_DEPRECATED);
 // Assuming $app is a Slim application or similar that provides a routing mechanism
 require 'vendor/autoload.php';
 
-$app = new \Slim\App();
+#$app = new \Slim\App();
+
+$app = new \Slim\App(array(
+    'debug' => true
+));
 
 // Function to generate OAuth 2.0 Access Token
 function getAccessToken() {
@@ -31,8 +36,9 @@ function getAccessToken() {
 }
 
 // POST /api/orders - Create an order
-$app->post('/api/orders', function () use ($app) {
+$app->any('/api/orders', function () use ($app) {
     $accessToken = getAccessToken();
+    
     $url = getenv('BASE_URL') . "/v2/checkout/orders";
 
     $orderData = array(
@@ -60,8 +66,9 @@ $app->post('/api/orders', function () use ($app) {
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($orderData));
 
     $response = curl_exec($ch);
+    
     curl_close($ch);
-
+    
     echo $response;
 });
 
@@ -87,4 +94,5 @@ $app->post('/api/orders/{orderID}/capture', function ($request, $response, $args
 });
 
 $app->run();
+
 ?>
