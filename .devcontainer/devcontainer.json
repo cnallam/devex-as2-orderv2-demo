@@ -3,7 +3,7 @@
     "name": "PayPal Standard Checkout - PHP",
     "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}/",
     "image": "mcr.microsoft.com/devcontainers/php:1-8.2-bullseye",
-    "postCreateCommand": "",
+    "postCreateCommand": "composer require slim/slim:\"3.*\"",
     "postAttachCommand": {
       "Start server": "php -S localhost:8888"
     },
